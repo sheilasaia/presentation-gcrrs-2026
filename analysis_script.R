@@ -304,7 +304,314 @@ br_years_data <- br_discharge_data |>
          doy = yday(time))
 
 
-# ---- lcr data exploration ----
+# ---- black river (br) data exploration ----
+# daily discharge vs time
+ggplot(data = br_discharge_data) +
+  geom_line(mapping = aes(x = time, y = value)) +
+  labs(x = "Time", y = "Dischrage (cfs)", title = "Black River Gage (USGS-02106500)") +
+  theme_classic()
+ggsave(filename = here::here("data", "br_q_vs_time.png"), width = 10, height = 8, dpi = 200)
+
+# daily maximum annual series
+br_ams_data <- br_discharge_data |>
+  mutate(year = year(time)) |>
+  group_by(year) |>
+  summarize(max_discharge_cfs = max(value, na.rm = TRUE))
+ggplot(data = br_ams_data) +
+  geom_line(mapping = aes(x = year, y = max_discharge_cfs)) +
+  labs(x = "Year", y = "Annual Maximum Daily Discharge (cfs)", title = "Black River Gage (USGS-02106500)") +
+  theme_classic()
+ggsave(filename = here::here("data", "br_max_q_vs_time.png"), width = 10, height = 8, dpi = 200)
+
+# daily discharge vs time with years overlayed
+ggplot(data = br_years_data) +
+  geom_line(mapping = aes(x = doy, y = value, color = year)) +
+  labs(x = "Day of Year", y = "Discharge (cfs)",
+       title = "Black River Gage (USGS-02106500)",
+       color = "Year") +
+  scale_color_distiller(palette = "Blues", direction = 1) +
+  theme_classic()
+ggsave(filename = here::here("data", "br_q_vs_time_overlay.png"), width = 10, height = 8, dpi = 200)
+
+
+# ---- br polar plot ----
+# version 1
+ggplot(data = br_years_data) +
+  geom_point(mapping = aes(x = doy, 
+                           y = value, 
+                           color = year, 
+                           group = year),
+             size = 0.5, alpha = 0.5) +
+  scale_color_distiller(palette = "Blues", direction = 1) +
+  coord_polar(start = 0) +
+  labs(x = NULL, y = "Discharge", color = "Year") +
+  theme_classic()
+ggsave(filename = here::here("data", "br_q_vs_time_polar_v1.png"), width = 10, height = 8, dpi = 200)
+
+# version 2
+br_month_breaks <- yday(ymd(paste0("2023-", 1:12, "-01")))
+ggplot(data = br_years_data) +
+  geom_point(mapping = aes(x = doy, 
+                           y = value, 
+                           color = year, 
+                           group = year),
+             size = 0.5, alpha = 0.5) +
+  scale_x_continuous(limits = c(1, 366),
+                     breaks = br_month_breaks,
+                     labels = month.abb) +
+  scale_color_distiller(palette = "Blues", direction = 1) +
+  coord_polar(start = 0) +
+  labs(x = NULL, y = "Discharge", color = "Year") +
+  theme_classic()
+ggsave(filename = here::here("data", "br_q_vs_time_polar_v2.png"), width = 10, height = 8, dpi = 200)
+
+# version 3
+br_ring_breaks <- c(10, 100, 1000, 10000, 100000)
+br_label_angle <- 200   # day of year where the labels sit (pick a gap in the lines)
+br_month_breaks <- yday(ymd(paste0("2023-", 1:12, "-01")))
+ggplot(data = br_years_data) +
+  # points for each
+  geom_point(mapping = aes(x = doy, 
+                           y = value, 
+                           color = year, 
+                           group = year),
+             size = 1, alpha = 0.5) +
+  # ring labels on a spoke
+  annotate("text", x = br_label_angle, y = br_ring_breaks,
+           label = scales::label_comma()(br_ring_breaks),
+           size = 3, vjust = -0.3, color = "gray30") +
+  # arrow along the spoke
+  annotate("segment", x = br_label_angle, xend = br_label_angle,
+           y = min(br_ring_breaks), yend = max(br_ring_breaks),
+           arrow = arrow(length = unit(0.15, "cm")), color = "gray30") +
+  scale_x_continuous(limits = c(1, 366),
+                     breaks = br_month_breaks,
+                     labels = month.abb) +
+  scale_y_log10(breaks = br_ring_breaks, minor_breaks = NULL) +
+  scale_color_distiller(palette = "Blues", direction = 1) +
+  coord_polar() +
+  labs(x = NULL, y = NULL, color = "Year",
+       title = "Black River Gage (USGS-02106500)" #,
+       # subtitle = expression("Distance from the center is log discharge in cfs")
+  ) +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+ggsave(filename = here::here("data", "br_q_vs_time_polar_v3.png"), width = 10, height = 8, dpi = 200)
+
+# version 4
+br_ring_breaks <- c(10, 100, 1000, 10000, 100000)
+br_label_angle <- 50   # day of year where the labels sit (pick a gap in the lines)
+ggplot(data = br_years_data) +
+  # lines for each year
+  geom_line(mapping = aes(x = doy, 
+                          y = value, 
+                          color = year, 
+                          group = year),
+            linewidth = 0.5) +
+  # ring labels on a spoke
+  annotate("text", x = br_label_angle, y = br_ring_breaks,
+           label = scales::label_comma()(br_ring_breaks),
+           size = 3, vjust = -0.3, color = "black",
+           fontface = "bold") +
+  # arrow along the spoke
+  annotate("segment", x = br_label_angle, xend = br_label_angle,
+           y = min(br_ring_breaks), yend = max(br_ring_breaks),
+           arrow = arrow(length = unit(0.15, "cm")), color = "black") +
+  scale_x_continuous(limits = c(1, 366),
+                     breaks = br_month_breaks,
+                     labels = month.abb) +
+  scale_y_log10(breaks = br_ring_breaks, minor_breaks = NULL) +
+  scale_color_distiller(palette = "Blues", direction = 1) +
+  coord_polar() +
+  labs(x = NULL, y = NULL, color = "Year",
+       title = "Black River Gage (USGS-02106500)" #,
+       # subtitle = expression("Distance from the center is log discharge in cfs")
+  ) +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+ggsave(filename = here::here("data", "lcr_q_vs_time_polar_v4.png"), width = 10, height = 8, dpi = 200)
+
+# version 5
+br_ring_breaks <- c(10, 100, 1000, 10000, 100000)
+br_label_angle <- 50   # day of year where the labels sit (pick a gap in the lines)
+br_month_breaks <- yday(ymd(paste0("2023-", 1:12, "-01")))
+daily_mean_line <- br_years_data |>
+  ungroup() |>
+  group_by(doy) |>
+  summarize(mean_daily_discharge_cfs = mean(value, na.rm = TRUE), .groups = "drop")
+ggplot(data = br_years_data) +
+  # lines for each year
+  geom_line(mapping = aes(x = doy, 
+                          y = value, 
+                          color = year, 
+                          group = year),
+            linewidth = 0.5) +
+  # line for mean daily flow
+  geom_line(data = daily_mean_line,
+            mapping = aes(x = doy, 
+                          y = mean_daily_discharge_cfs),
+            color = "black",
+            linewidth = 1) +
+  # ring labels on a spoke
+  annotate("text", x = br_label_angle, y = br_ring_breaks,
+           label = scales::label_comma()(br_ring_breaks),
+           size = 3, vjust = -0.3, color = "black",
+           fontface = "bold") +
+  # arrow along the spoke
+  annotate("segment", x = br_label_angle, xend = br_label_angle,
+           y = min(br_ring_breaks), yend = max(br_ring_breaks),
+           arrow = arrow(length = unit(0.15, "cm")), color = "black") +
+  scale_x_continuous(limits = c(1, 366),
+                     breaks = br_month_breaks,
+                     labels = month.abb) +
+  scale_y_log10(breaks = br_ring_breaks, minor_breaks = NULL) +
+  scale_color_distiller(palette = "Blues", direction = 1) +
+  coord_polar() +
+  labs(x = NULL, y = NULL, color = "Year",
+       title = "Black River Gage (USGS-02106500)" #,
+       # subtitle = expression("Distance from the center is log discharge in cfs"),
+       # caption = "Black line is the mean daily flow across all years"
+  ) +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+ggsave(filename = here::here("data", "br_q_vs_time_polar_v5.png"), width = 10, height = 8, dpi = 200)
+
+# version 6
+br_ring_breaks <- c(10, 100, 1000, 10000, 100000)
+br_month_breaks <- yday(ymd(paste0("2023-", 1:12, "-01")))
+br_label_angle <- 50   # day of year where the labels sit (pick a gap in the lines)
+br_daily_mean_line <- br_years_data |>
+  ungroup() |>
+  group_by(doy) |>
+  summarize(mean_daily_discharge_cfs = mean(value, na.rm = TRUE), .groups = "drop")
+br_daily_summary <- br_years_data |>
+  group_by(doy) |>
+  summarize(q_min  = min(value, na.rm = TRUE),
+            q_max  = max(value, na.rm = TRUE),
+            q_mean = mean(value, na.rm = TRUE),
+            .groups = "drop")
+ggplot() +
+  # min-max envelope
+  geom_ribbon(data = br_daily_summary,
+              aes(x = doy, ymin = q_min, ymax = q_max),
+              inherit.aes = FALSE,
+              fill = "gray90", alpha = 0.7) +
+  # lines for each year
+  geom_line(data = br_years_data,
+            mapping = aes(x = doy, 
+                          y = value, 
+                          group = year),
+            linewidth = 0.25,
+            color = "grey80") +
+  # line for mean daily flow
+  geom_line(data = br_daily_mean_line,
+            mapping = aes(x = doy, 
+                          y = mean_daily_discharge_cfs),
+            color = "black",
+            linewidth = 1) +
+  # arrow along the spoke
+  annotate("segment", x = br_label_angle, xend = br_label_angle,
+           y = min(br_ring_breaks), yend = max(br_ring_breaks),
+           arrow = arrow(length = unit(0.15, "cm")), color = "black") +
+  # ring labels on a spoke
+  annotate("label", x = br_label_angle, y = br_ring_breaks,
+           label = scales::label_comma()(br_ring_breaks),
+           size = 3, fontface = "bold", color = "black",
+           fill = "white", alpha = 0.8, linewidth = 0) +
+  scale_x_continuous(limits = c(1, 366), breaks = br_month_breaks, labels = month.abb) +
+  scale_y_log10(breaks = br_ring_breaks, minor_breaks = NULL) +
+  coord_polar() +
+  labs(x = NULL, y = NULL,
+       title = "Black River Gage (USGS-02106500)") +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+ggsave(filename = here::here("data", "br_q_vs_time_polar_v6.png"), width = 10, height = 8, dpi = 200)
+
+
+# version 7
+br_ring_breaks <- c(10, 100, 1000, 10000, 100000)
+br_label_angle <- 50   # day of year where the labels sit (pick a gap in the lines)
+br_daily_mean_line <- br_years_data |>
+  ungroup() |>
+  group_by(doy) |>
+  summarize(mean_daily_discharge_cfs = mean(value, na.rm = TRUE), .groups = "drop")
+br_daily_summary <- br_years_data |>
+  group_by(doy) |>
+  summarize(q_min  = min(value, na.rm = TRUE),
+            q_max  = max(value, na.rm = TRUE),
+            q_mean = mean(value, na.rm = TRUE),
+            .groups = "drop")
+br_decade_lines <- br_years_data |>
+  ungroup() |>
+  filter(year >= 1960, year <= 2019) |>
+  mutate(decade = case_when(year <= 1969 ~ "1960-1969",
+                            year <= 1979 ~ "1970-1979",
+                            year <= 1989 ~ "1980-1989",
+                            year <= 1999 ~ "1990-1999",
+                            year <= 2009 ~ "2000-2009",
+                            year <= 2019 ~ "2010-2019")) |>
+  group_by(decade, doy) |>
+  summarize(mean_daily_discharge_cfs = mean(value, na.rm = TRUE),
+            .groups = "drop")
+# pick 6 colors in blues
+# decadal_colors <- brewer.pal(n = 6, name = "Blues")
+br_decadal_colors <- setNames(colorRampPalette(brewer.pal(9, "Blues")[4:9])(6),
+                              c("1960-1969", "1970-1979", "1980-1989", "1990-1999", "2000-2009", "2010-2019"))
+br_month_breaks <- yday(ymd(paste0("2026-", 1:12, "-01")))
+ggplot() +
+  # min-max envelope
+  geom_ribbon(data = br_daily_summary,
+              aes(x = doy, ymin = q_min, ymax = q_max),
+              inherit.aes = FALSE,
+              fill = "gray90", alpha = 0.7) +
+  # lines for each year
+  geom_line(data = br_years_data,
+            mapping = aes(x = doy, 
+                          y = value, 
+                          group = year),
+            linewidth = 0.25,
+            color = "grey80") +
+  # decadal mean daily flow
+  geom_line(data = br_decade_lines,
+            mapping = aes(x = doy,
+                          y = mean_daily_discharge_cfs,
+                          color = decade,
+                          group = decade),
+            linewidth = 0.5) +
+  # line for mean daily flow (all years)
+  geom_line(data = br_daily_mean_line,
+            mapping = aes(x = doy,
+                          y = mean_daily_discharge_cfs),
+            color = "black",
+            linewidth = 1) +
+  # arrow along the spoke
+  annotate("segment", x = label_angle, xend = label_angle,
+           y = min(ring_breaks), yend = max(ring_breaks),
+           arrow = arrow(length = unit(0.15, "cm")), color = "black") +
+  # ring labels on a spoke
+  annotate("label", x = label_angle, y = ring_breaks,
+           label = scales::label_comma()(ring_breaks),
+           size = 3, fontface = "bold", color = "black",
+           fill = "white", alpha = 0.8, linewidth = 0) +
+  scale_x_continuous(limits = c(1, 366), 
+                     breaks = br_month_breaks, 
+                     labels = month.abb) +
+  scale_y_log10(breaks = br_ring_breaks, minor_breaks = NULL) +
+  scale_color_manual(values = br_decadal_colors) +
+  coord_polar() +
+  labs(x = NULL, y = NULL, color = "Mean Daily Discharge (cfs)",
+       title = "Black River Gage (USGS-02106500)") +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        legend.position = "bottom")
+ggsave(filename = here::here("data", "br_q_vs_time_polar_v7.png"), width = 10, height = 8, dpi = 200)
+
+
+# ---- little coharie river (lcr) data exploration ----
 # daily discharge vs time
 ggplot(data = lcr_discharge_data) +
   geom_line(mapping = aes(x = time, y = value)) +
@@ -352,10 +659,10 @@ ggsave(filename = here::here("data", "lcr_q_vs_time_polar_v1.png"), width = 10, 
 month_breaks <- yday(ymd(paste0("2023-", 1:12, "-01")))
 ggplot(data = lcr_years_data) +
   geom_point(mapping = aes(x = doy, 
-                          y = value, 
-                          color = year, 
-                          group = year),
-              size = 0.5, alpha = 0.5) +
+                           y = value, 
+                           color = year, 
+                           group = year),
+             size = 0.5, alpha = 0.5) +
   scale_x_continuous(limits = c(1, 366),
                      breaks = month_breaks,
                      labels = month.abb) +
@@ -392,7 +699,7 @@ ggplot(data = lcr_years_data) +
   labs(x = NULL, y = NULL, color = "Year",
        title = "Little Coharie Creek Gage (USGS-02106000)" #,
        # subtitle = expression("Distance from the center is log discharge in cfs")
-       ) +
+  ) +
   theme_minimal() +
   theme(axis.text.y = element_blank(),
         axis.ticks.y = element_blank())
@@ -426,7 +733,7 @@ ggplot(data = lcr_years_data) +
   labs(x = NULL, y = NULL, color = "Year",
        title = "Little Coharie Creek Gage (USGS-02106000)" #,
        # subtitle = expression("Distance from the center is log discharge in cfs")
-       ) +
+  ) +
   theme_minimal() +
   theme(axis.text.y = element_blank(),
         axis.ticks.y = element_blank())
@@ -471,7 +778,7 @@ ggplot(data = lcr_years_data) +
        title = "Little Coharie Creek Gage (USGS-02106000)" #,
        # subtitle = expression("Distance from the center is log discharge in cfs"),
        # caption = "Black line is the mean daily flow across all years"
-       ) +
+  ) +
   theme_minimal() +
   theme(axis.text.y = element_blank(),
         axis.ticks.y = element_blank())
@@ -493,9 +800,9 @@ daily_summary <- lcr_years_data |>
 ggplot() +
   # min-max envelope
   geom_ribbon(data = daily_summary,
-    aes(x = doy, ymin = q_min, ymax = q_max),
-    inherit.aes = FALSE,
-    fill = "gray90", alpha = 0.7) +
+              aes(x = doy, ymin = q_min, ymax = q_max),
+              inherit.aes = FALSE,
+              fill = "gray90", alpha = 0.7) +
   # lines for each year
   geom_line(data = lcr_years_data,
             mapping = aes(x = doy, 
@@ -599,86 +906,6 @@ ggplot() +
         axis.ticks.y = element_blank(),
         legend.position = "bottom")
 ggsave(filename = here::here("data", "lcr_q_vs_time_polar_v7.png"), width = 10, height = 8, dpi = 200)
-
-
-# ---- br polar plot ---- 
-br_ring_breaks <- c(10, 100, 1000, 10000, 100000)
-br_label_angle <- 50   # day of year where the labels sit (pick a gap in the lines)
-br_daily_mean_line <- br_years_data |>
-  ungroup() |>
-  group_by(doy) |>
-  summarize(mean_daily_discharge_cfs = mean(value, na.rm = TRUE), .groups = "drop")
-br_daily_summary <- br_years_data |>
-  group_by(doy) |>
-  summarize(q_min  = min(value, na.rm = TRUE),
-            q_max  = max(value, na.rm = TRUE),
-            q_mean = mean(value, na.rm = TRUE),
-            .groups = "drop")
-br_decade_lines <- br_years_data |>
-  ungroup() |>
-  filter(year >= 1960, year <= 2019) |>
-  mutate(decade = case_when(year <= 1969 ~ "1960-1969",
-                            year <= 1979 ~ "1970-1979",
-                            year <= 1989 ~ "1980-1989",
-                            year <= 1999 ~ "1990-1999",
-                            year <= 2009 ~ "2000-2009",
-                            year <= 2019 ~ "2010-2019")) |>
-  group_by(decade, doy) |>
-  summarize(mean_daily_discharge_cfs = mean(value, na.rm = TRUE),
-            .groups = "drop")
-# pick 6 colors in blues
-# decadal_colors <- brewer.pal(n = 6, name = "Blues")
-br_decadal_colors <- setNames(colorRampPalette(brewer.pal(9, "Blues")[4:9])(6),
-                              c("1960-1969", "1970-1979", "1980-1989", "1990-1999", "2000-2009", "2010-2019"))
-br_month_breaks <- yday(ymd(paste0("2026-", 1:12, "-01")))
-ggplot() +
-  # min-max envelope
-  geom_ribbon(data = br_daily_summary,
-              aes(x = doy, ymin = q_min, ymax = q_max),
-              inherit.aes = FALSE,
-              fill = "gray90", alpha = 0.7) +
-  # lines for each year
-  geom_line(data = br_years_data,
-            mapping = aes(x = doy, 
-                          y = value, 
-                          group = year),
-            linewidth = 0.25,
-            color = "grey80") +
-  # decadal mean daily flow
-  geom_line(data = br_decade_lines,
-            mapping = aes(x = doy,
-                          y = mean_daily_discharge_cfs,
-                          color = decade,
-                          group = decade),
-            linewidth = 0.5) +
-  # line for mean daily flow (all years)
-  geom_line(data = br_daily_mean_line,
-            mapping = aes(x = doy,
-                          y = mean_daily_discharge_cfs),
-            color = "black",
-            linewidth = 1) +
-  # arrow along the spoke
-  annotate("segment", x = label_angle, xend = label_angle,
-           y = min(ring_breaks), yend = max(ring_breaks),
-           arrow = arrow(length = unit(0.15, "cm")), color = "black") +
-  # ring labels on a spoke
-  annotate("label", x = label_angle, y = ring_breaks,
-           label = scales::label_comma()(ring_breaks),
-           size = 3, fontface = "bold", color = "black",
-           fill = "white", alpha = 0.8, linewidth = 0) +
-  scale_x_continuous(limits = c(1, 366), 
-                     breaks = br_month_breaks, 
-                     labels = month.abb) +
-  scale_y_log10(breaks = br_ring_breaks, minor_breaks = NULL) +
-  scale_color_manual(values = br_decadal_colors) +
-  coord_polar() +
-  labs(x = NULL, y = NULL, color = "Mean Daily Discharge (cfs)",
-       title = "Black River Gage (USGS-02106500)") +
-  theme_minimal() +
-  theme(axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        legend.position = "bottom")
-ggsave(filename = here::here("data", "br_q_vs_time_polar.png"), width = 10, height = 8, dpi = 200)
 
 
 # ---- ribbon for drawing ----
